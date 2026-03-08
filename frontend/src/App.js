@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import logo from './logo.svg';
 import './App.css';
 
 const cleanEmail = (sender) => (sender && sender.match(/<(.+?)>/)?.[1]) || sender || '';
@@ -68,40 +67,43 @@ function App() {
 
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="http://localhost:8000/auth/google"
-          rel="noopener noreferrer"
-        >
-          Login with Google
-        </a>
+      <div className="dashboard-container">
+        <header className="dashboard-header">
+          <h1>Gmail Integration Dashboard</h1>
+        </header>
+
+        <div className="control-bar">
+          <a
+            className="btn btn-primary"
+            href="http://localhost:8000/auth/google"
+            rel="noopener noreferrer"
+          >
+            Login with Google
+          </a>
+          <select
+            className="control-select"
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+          >
+            <option value="7">Last 7 Days</option>
+            <option value="15">Last 15 Days</option>
+            <option value="30">Last 30 Days</option>
+          </select>
+          <button type="button" className="btn btn-secondary" onClick={syncEmails} disabled={!token}>
+            Sync Emails
+          </button>
+        </div>
+
         {!token && (
-          <p style={{ fontSize: 14, color: '#f88' }}>
+          <p className="hint-message">
             Login with Google to sync and reply. You will be redirected back here with the token.
           </p>
         )}
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-        <select onChange={(e) => setDays(e.target.value)}>
-          <option value="7">Last 7 Days</option>
-          <option value="15">Last 15 Days</option>
-          <option value="30">Last 30 Days</option>
-        </select>
-        <button onClick={syncEmails}>Sync Emails</button>
+
+        <main className="dashboard-main">
         {emails.length > 0 && (
           <div className="table-wrapper">
-            <table>
+            <table className="email-table">
               <thead>
               <tr>
                 <th>From</th>
@@ -117,7 +119,7 @@ function App() {
                   <td>{email.sender}</td>
                   <td>{email.receiver}</td>
                   <td>{email.subject}</td>
-                  <td>
+                  <td className="col-attachments">
                     {email.attachments && email.attachments.length > 0
                       ? email.attachments.map((a, i) => (
                           <span key={i} title={a.filename}>
@@ -127,11 +129,11 @@ function App() {
                         ))
                       : '—'}
                   </td>
-                  <td>
-                    <button type="button" onClick={() => openThread(email.thread_id)}>
+                  <td className="col-actions">
+                    <button type="button" className="btn btn-view-thread" onClick={() => openThread(email.thread_id)}>
                       View thread
                     </button>
-                    <button type="button" onClick={() => setReplyingTo(email)}>
+                    <button type="button" className="btn btn-reply" onClick={() => setReplyingTo(email)}>
                       Reply
                     </button>
                   </td>
@@ -141,13 +143,14 @@ function App() {
           </table>
           </div>
         )}
+
         {thread && thread.length > 0 && (
-          <div style={{ marginTop: 20, textAlign: 'left', maxWidth: 700 }}>
-            <p><strong>Thread ({thread.length} messages)</strong></p>
-            <button type="button" onClick={() => setThread(null)}>Close thread</button>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+          <div className="panel thread-panel">
+            <p className="thread-title">Thread ({thread.length} messages)</p>
+            <button type="button" className="btn btn-secondary" onClick={() => setThread(null)}>Close thread</button>
+            <ul className="thread-list">
               {thread.map((msg) => (
-                <li key={msg.id} style={{ borderBottom: '1px solid #444', padding: '8px 0' }}>
+                <li key={msg.id} className="thread-item">
                   <strong>From:</strong> {msg.sender} | <strong>To:</strong> {msg.receiver}<br />
                   <strong>Subject:</strong> {msg.subject}
                 </li>
@@ -156,20 +159,23 @@ function App() {
           </div>
         )}
         {replyingTo && (
-          <div style={{ marginTop: 20, textAlign: 'left', maxWidth: 500 }}>
+          <div className="panel reply-panel">
             <p><strong>Reply to: {replyingTo.subject}</strong></p>
             <textarea
               value={replyBody}
               onChange={(e) => setReplyBody(e.target.value)}
               placeholder="Type your reply..."
               rows={4}
-              style={{ width: '100%', display: 'block', marginBottom: 8 }}
+              className="reply-textarea"
             />
-            <button type="button" onClick={handleReply}>Send Reply</button>
-            <button type="button" onClick={() => { setReplyingTo(null); setReplyBody(''); }}>Cancel</button>
+            <div className="reply-actions">
+            <button type="button" className="btn btn-primary" onClick={handleReply}>Send Reply</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setReplyingTo(null); setReplyBody(''); }}>Cancel</button>
+            </div>
           </div>
         )}
-      </header>
+        </main>
+      </div>
     </div>
   );
 }
