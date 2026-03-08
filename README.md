@@ -42,13 +42,49 @@ This project is a **Gmail Integration Dashboard** built for the **BeyondChats em
 
 ## 3. Architecture / Data Flow
 
+### Architecture Diagram
+
+```mermaid
+flowchart LR
+    subgraph Client[" "]
+        UB[User Browser]
+        RF[React Frontend]
+    end
+
+    subgraph Server[" "]
+        LB[Laravel Backend]
+    end
+
+    subgraph External[" "]
+        GO[Google OAuth]
+        GA[Gmail API]
+    end
+
+    subgraph Storage[" "]
+        DB[(SQLite Database)]
+    end
+
+    UB -->|"1. User connects Gmail"| RF
+    RF -->|"2. OAuth authentication"| LB
+    LB --> GO
+    GO -->|"Auth code / Token"| LB
+    LB -->|"3. Email sync (with token)"| GA
+    GA -->|"Messages, headers, attachments"| LB
+    LB -->|"4. Emails stored in database"| DB
+    DB -->|"Read emails"| LB
+    LB -->|"API response"| RF
+    RF -->|"5. Dashboard displays emails"| UB
 ```
-User (Browser)
-    → React Dashboard (localhost:3000)
-    → Laravel API (localhost:8000)
-    → Gmail API / SQLite
-    → Database (emails, threads)
-```
+
+**Flow summary:**
+
+| Step | Flow | Description |
+|------|------|-------------|
+| 1 | User Browser → React Frontend | User clicks "Login with Google" or "Sync Emails". |
+| 2 | React → Laravel → Google OAuth | OAuth authentication; Laravel redirects to Google and handles callback. |
+| 3 | Laravel → Gmail API | Email sync: list messages, fetch headers/attachments using access token. |
+| 4 | Laravel → SQLite | Store/update emails (sender, receiver, subject, thread_id, attachments). |
+| 5 | Laravel → React → User | Dashboard fetches emails from API and displays them in the table. |
 
 ### OAuth Flow
 
