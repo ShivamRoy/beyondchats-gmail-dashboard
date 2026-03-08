@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const cleanEmail = (sender) => (sender && sender.match(/<(.+?)>/)?.[1]) || sender || '';
@@ -10,6 +10,10 @@ function App() {
   const [replyBody, setReplyBody] = useState('');
   const [thread, setThread] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('gmail_token') || '');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState(null);
+  const threadContainerRef = useRef(null);
+  const replyContainerRef = useRef(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -28,11 +32,41 @@ function App() {
       .catch(() => setEmails([]));
   }, []);
 
+  useEffect(() => {
+    if (thread && thread.length > 0 && threadContainerRef.current) {
+      threadContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [thread]);
+
+  useEffect(() => {
+    if (replyingTo && replyContainerRef.current) {
+      replyContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [replyingTo]);
+
   const syncEmails = () => {
     if (!token) return;
+    setIsSyncing(true);
+    setSyncMessage(null);
     fetch(`http://127.0.0.1:8000/fetch-emails?days=${days}&token=${encodeURIComponent(token)}`)
-      .then((res) => res.json())
-      .then((data) => console.log(data));
+      .then((res) => {
+        if (!res.ok) throw new Error('Sync failed');
+        return res.json();
+      })
+      .then((data) => {
+        setIsSyncing(false);
+        setSyncMessage('success');
+        fetch('http://localhost:8000/emails')
+          .then((r) => r.json())
+          .then((list) => setEmails(list))
+          .catch(() => {});
+        setTimeout(() => setSyncMessage(null), 4000);
+      })
+      .catch(() => {
+        setIsSyncing(false);
+        setSyncMessage('error');
+        setTimeout(() => setSyncMessage(null), 4000);
+      });
   };
 
   const openThread = (threadId) => {
@@ -89,9 +123,26 @@ function App() {
             <option value="15">Last 15 Days</option>
             <option value="30">Last 30 Days</option>
           </select>
-          <button type="button" className="btn btn-secondary" onClick={syncEmails} disabled={!token}>
-            Sync Emails
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={syncEmails}
+            disabled={!token || isSyncing}
+          >
+            {isSyncing ? (
+              <>
+                <span className="sync-spinner" aria-hidden />
+                Syncing...
+              </>
+            ) : (
+              'Sync Emails'
+            )}
           </button>
+          {syncMessage && (
+            <span className={`sync-feedback sync-feedback--${syncMessage}`}>
+              {syncMessage === 'success' ? 'Emails synced successfully.' : 'Failed to sync emails.'}
+            </span>
+          )}
         </div>
 
         {!token && (
@@ -145,7 +196,7 @@ function App() {
         )}
 
         {thread && thread.length > 0 && (
-          <div className="panel thread-panel">
+          <div ref={threadContainerRef} className="panel thread-panel thread-container">
             <p className="thread-title">Thread ({thread.length} messages)</p>
             <button type="button" className="btn btn-secondary" onClick={() => setThread(null)}>Close thread</button>
             <ul className="thread-list">
@@ -159,8 +210,8 @@ function App() {
           </div>
         )}
         {replyingTo && (
-          <div className="panel reply-panel">
-            <p><strong>Reply to: {replyingTo.subject}</strong></p>
+          <div ref={replyContainerRef} className="panel reply-panel reply-container">
+            <p className="reply-panel-title"><strong>Reply to: {replyingTo.subject}</strong></p>
             <textarea
               value={replyBody}
               onChange={(e) => setReplyBody(e.target.value)}
@@ -169,8 +220,8 @@ function App() {
               className="reply-textarea"
             />
             <div className="reply-actions">
-            <button type="button" className="btn btn-primary" onClick={handleReply}>Send Reply</button>
-            <button type="button" className="btn btn-secondary" onClick={() => { setReplyingTo(null); setReplyBody(''); }}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={handleReply}>Send Reply</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setReplyingTo(null); setReplyBody(''); }}>Cancel</button>
             </div>
           </div>
         )}
