@@ -143,6 +143,31 @@
   border: 1px solid rgba(255, 136, 136, 0.2);
 }
 
+/* Session expired banner */
+.session-expired-banner {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.session-expired-message {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #fcd34d;
+  flex: 1;
+  min-width: 200px;
+}
+
+.session-expired-banner .btn-primary {
+  flex-shrink: 0;
+}
+
 /* Main content area */
 .dashboard-main {
   margin-top: 8px;

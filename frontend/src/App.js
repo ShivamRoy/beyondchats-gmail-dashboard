@@ -12,8 +12,24 @@ function App() {
   const [token, setToken] = useState(() => localStorage.getItem('gmail_token') || '');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const threadContainerRef = useRef(null);
   const replyContainerRef = useRef(null);
+
+  const clearSession = () => {
+    localStorage.removeItem('gmail_token');
+    setToken('');
+    setSessionExpired(true);
+  };
+
+  const isAuthError = (res, data) => {
+    if (res.status === 401 || res.status === 403) return true;
+    if (data && typeof data === 'object' && data.error) {
+      const msg = String(data.error).toLowerCase();
+      if (msg.includes('token') || msg.includes('unauthorized') || msg.includes('invalid') || msg.includes('expired')) return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -21,14 +37,21 @@ function App() {
     if (accessToken) {
       localStorage.setItem('gmail_token', accessToken);
       setToken(accessToken);
+      setSessionExpired(false);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
   useEffect(() => {
     fetch('http://localhost:8000/emails')
-      .then((res) => res.json())
-      .then((data) => setEmails(data))
+      .then((res) => res.json().then((data) => ({ res, data })).catch(() => ({ res, data: null })))
+      .then(({ res, data }) => {
+        if (res.status === 401 || res.status === 403) {
+          clearSession();
+          return;
+        }
+        if (data && Array.isArray(data)) setEmails(data);
+      })
       .catch(() => setEmails([]));
   }, []);
 
@@ -49,11 +72,14 @@ function App() {
     setIsSyncing(true);
     setSyncMessage(null);
     fetch(`http://127.0.0.1:8000/fetch-emails?days=${days}&token=${encodeURIComponent(token)}`)
-      .then((res) => {
+      .then((res) => res.json().then((data) => ({ res, data })).catch(() => ({ res, data: null })))
+      .then(({ res, data }) => {
+        if (isAuthError(res, data)) {
+          clearSession();
+          setIsSyncing(false);
+          return;
+        }
         if (!res.ok) throw new Error('Sync failed');
-        return res.json();
-      })
-      .then((data) => {
         setIsSyncing(false);
         setSyncMessage('success');
         fetch('http://localhost:8000/emails')
@@ -71,8 +97,15 @@ function App() {
 
   const openThread = (threadId) => {
     fetch(`http://127.0.0.1:8000/thread/${threadId}`)
-      .then((res) => res.json())
-      .then((data) => setThread(data));
+      .then((res) => res.json().then((data) => ({ res, data })).catch(() => ({ res, data: null })))
+      .then(({ res, data }) => {
+        if (isAuthError(res, data)) {
+          clearSession();
+          return;
+        }
+        setThread(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setThread([]));
   };
 
   const handleReply = () => {
@@ -89,14 +122,18 @@ function App() {
         message: replyBody.trim(),
       }),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
+      .then((res) => res.json().then((data) => ({ res, data })).catch(() => ({ res, data: null })))
+      .then(({ res, data }) => {
+        if (isAuthError(res, data)) {
+          clearSession();
+          return;
+        }
+        if (data && data.success) {
           setReplyingTo(null);
           setReplyBody('');
         }
       })
-      .catch(console.error);
+      .catch(() => {});
   };
 
   return (
@@ -145,7 +182,23 @@ function App() {
           )}
         </div>
 
-        {!token && (
+        {sessionExpired && (
+          <div className="session-expired-banner">
+            <p className="session-expired-message">
+              Your Gmail session has expired. Please reconnect your Gmail account.
+            </p>
+            <a
+              className="btn btn-primary"
+              href="http://localhost:8000/auth/google"
+              rel="noopener noreferrer"
+              onClick={() => setSessionExpired(false)}
+            >
+              Reconnect Gmail
+            </a>
+          </div>
+        )}
+
+        {!token && !sessionExpired && (
           <p className="hint-message">
             Login with Google to sync and reply. You will be redirected back here with the token.
           </p>
