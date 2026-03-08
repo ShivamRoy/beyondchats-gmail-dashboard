@@ -162,6 +162,7 @@ Frontend runs at **http://localhost:3000**. Open this URL in the browser to use 
 5. **View emails** in the table (From, To, Subject, Attachments).
 6. **Click “View thread”** on any row to open the full email thread.
 7. **Click “Reply”** to write a reply; enter your message and click **Send Reply** to send via Gmail.
+8. **If the Gmail access token expires**, the dashboard prompts you to reconnect your account (clear message and “Reconnect Gmail” button).
 
 ---
 
@@ -174,6 +175,9 @@ Frontend runs at **http://localhost:3000**. Open this URL in the browser to use 
 - **Attachments detection** — parse `payload.parts` for filenames and display in the dashboard
 - **Reply to email** — `POST /reply` with token, thread_id, to, subject, message; sends via Gmail API in the same thread
 - **Responsive dashboard UI** — table with horizontal scroll and mobile-friendly styles (e.g. iPhone SE)
+- **Loading indicator during email sync** — provides user feedback while emails are being fetched
+- **Automatic scroll to thread view** — when opening a conversation, the view scrolls to the thread panel
+- **Graceful handling of expired Gmail tokens** — when the token is invalid or expired, the dashboard shows a reconnect prompt and clears the stored token
 
 ---
 
